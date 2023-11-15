@@ -91,6 +91,7 @@ public:
     tf2::BufferCore & buffer,
     NodeT && node,
     bool spin_thread = true,
+    std::string ns = "", // namespace
     const rclcpp::QoS & qos = DynamicListenerQoS(),
     const rclcpp::QoS & static_qos = StaticListenerQoS(),
     const rclcpp::SubscriptionOptionsWithAllocator<AllocatorT> & options =
@@ -99,7 +100,7 @@ public:
     detail::get_default_transform_listener_static_sub_options<AllocatorT>())
   : buffer_(buffer)
   {
-    init(node, spin_thread, qos, static_qos, options, static_options);
+    init(node, spin_thread, qos, static_qos, options, static_options, ns); // change
   }
 
   TF2_ROS_PUBLIC
@@ -113,7 +114,8 @@ private:
     const rclcpp::QoS & qos,
     const rclcpp::QoS & static_qos,
     const rclcpp::SubscriptionOptionsWithAllocator<AllocatorT> & options,
-    const rclcpp::SubscriptionOptionsWithAllocator<AllocatorT> & static_options)
+    const rclcpp::SubscriptionOptionsWithAllocator<AllocatorT> & static_options,
+    const std::string ns = "")  // added parameter, null by default
   {
     spin_thread_ = spin_thread;
     node_base_interface_ = node->get_node_base_interface();
@@ -135,10 +137,20 @@ private:
       tf_options.callback_group = callback_group_;
       tf_static_options.callback_group = callback_group_;
 
+      // added lines
+      std::string tf_topic = "/tf";
+      std::string tf_static_topic = "/tf_static";
+
+      if (!ns.empty()) {
+        // std::cout << "Creating TF listener with ns: " << ns << std::endl;
+        tf_topic = ns + "/tf";
+        tf_static_topic = ns + "/tf_static";
+      }
+      // ----------
       message_subscription_tf_ = rclcpp::create_subscription<tf2_msgs::msg::TFMessage>(
-        node, "/tf", qos, std::move(cb), tf_options);
+        node, tf_topic, qos, std::move(cb), tf_options); // change
       message_subscription_tf_static_ = rclcpp::create_subscription<tf2_msgs::msg::TFMessage>(
-        node, "/tf_static", static_qos, std::move(static_cb), tf_static_options);
+        node, tf_static_topic, static_qos, std::move(static_cb), tf_static_options); // change
 
       // Create executor with dedicated thread to spin.
       executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
